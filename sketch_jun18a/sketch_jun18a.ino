@@ -1,22 +1,16 @@
 //a0:b7:65:68:5d:d2
+
 #include <PS4Controller.h>
 
-const int trigPin1 = 2;
-const int echoPin1 = 4;
+const int right_s = 34;
+const int left_s = 4;
 
-const int trigPin2 = 18;
-const int echoPin2 = 5;
 
 #define RXD2 16
 #define TXD2 17
 
 #define SOUND_SPEED 0.034
 
-long duration1;
-float distanceCm1;
-
-long duration2;
-float distanceCm2;
 
 #define ENCAL 34
 #define ENCBL 35
@@ -30,19 +24,21 @@ volatile int posil = 0;
 #define x_axis 13
 #define y_axis 12
 volatile int posir = 0;
-volatile int x_c =0;
-volatile int y_c = 0;
+int x_c;
+int y_c;
 String joy;
 int left;
 int right;
 String self;
+int prev_x_c;
+int prev_y_c;
+int prev_x;
+int prev_y;
 void setup() {
 Serial.begin(115200);
 Serial2.begin(38400, SERIAL_8N1, RXD2, TXD2);
-pinMode(trigPin1, OUTPUT);
-pinMode(echoPin1, INPUT); 
-pinMode(trigPin2, OUTPUT); 
-pinMode(echoPin2, INPUT); 
+pinMode(left_s, INPUT);
+pinMode(right_s, INPUT);
 pinMode(ENCAL,INPUT);
 pinMode(ENCBL,INPUT);
 pinMode(ENCAR,INPUT);
@@ -55,8 +51,7 @@ pinMode(pwm1,OUTPUT);
 pinMode(pwm2,OUTPUT);
 PS4.attach(notify);
 PS4.begin();
-attachInterrupt(digitalPinToInterrupt(ENCAL),readEncoderl,RISING);
-attachInterrupt(digitalPinToInterrupt(ENCAR),readEncoderr,RISING);
+
 }
 
 void loop() {
@@ -65,69 +60,69 @@ void loop() {
     datain.trim();
     self = datain.substring(0,1);
     joy = datain.substring(2,3);
-    Serial.print(self);
-    Serial.print("-");
-    Serial.println(joy); 
+//    Serial.print(self);
+//    Serial.print("-");
+//    Serial.println(joy); 
   }
-//  Serial.print(posil);
+//  Serial.print(digitalRead(left_s));
 //  Serial.print(" ");
-//  Serial.println(posir);
-int x = map(analogRead(x_axis),0,4095, -255,255);
-int y = map(analogRead(y_axis),0,4095, -255,255);
+//  Serial.println(digitalRead(right_s));
+int x = map(analogRead(x_axis),0,4095, -90,90);
+int y = map(analogRead(y_axis),0,4095, -90,90);
+x_c = map(x_c,-128,128, -90,90);
+y_c = map(y_c,-128,128, -90,90);
 if(x_c < 10 and x_c> -10)
   x_c = 0;
 if(y_c < 10 and y_c > -10)
   y_c = 0;
-x_c = map(x_c,-128,128, -255,255);
-y_c = map(y_c,-128,128, -255,255);
+
 if(x < 30 and x> -30)
     x = 0;
   if(y < 30 and y > -30)  
     y = 0;
 
-if (joy.toInt() == 1)
+if (joy.toInt() == 0)
 {
-  right = y_c + x_c;
-  left = y_c - x_c;
+  right = y_c - x_c;
+  left = y_c + x_c;
 }
 else
 {
-   right = y + x;
-   left = y - x;
+   right = y - x;
+   left = y + x;
 }
+
+if (self.toInt() == 0)
+{
+  int obs_l = digitalRead(left_s);
+  int obs_r = digitalRead(right_s);
+  if (obs_r == 0)
+  {
+    left += 40;
+  }
+  else
+  left = left;
+  
+
+  if(obs_l == 0)
+  right += 40;
+  else
+  right = right;
+  
+}
+
 //Serial.print(distanceCm1);
 //Serial.print(" ");
 //Serial.println(distanceCm2);
 
 drive(left,right);
-//Serial.print(x_c);
-//Serial.print(" ");
-//Serial.println(y_c);
+Serial.print(left);
+Serial.print(" ");
+Serial.println(right);
 //readD1();
 //readD2();
+delay(10);
 }
-
-void readEncoderl(){
-  int b = digitalRead(ENCBL);
-  if(b > 0){
-    posil++;
-  }
-  else{
-    posil--;
-  }
-}
-
-
-void readEncoderr(){
-  int b = digitalRead(ENCBR);
-  if(b > 0){
-    posir++;
-  }
-  else{
-    posir--;
-  }
-}
-
 
 void drive(int speed_a , int speed_b)
 {
@@ -158,9 +153,9 @@ void drive(int speed_a , int speed_b)
     analogWrite(pwm2, abs(speed_b));
   }
 
-  Serial.print(speed_a);
-  Serial.print(" ");
-  Serial.println(speed_b);
+//  Serial.print(speed_a);
+//  Serial.print(" ");
+//  Serial.println(speed_b);
 }
 
 
@@ -168,34 +163,4 @@ void notify()
 {
   x_c = PS4.LStickX();
   y_c = PS4.LStickY();
-}
-
-
-void readD1()
-{
-  digitalWrite(trigPin1, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin1, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin1, LOW);
-  
-  duration1 = pulseIn(echoPin1, HIGH);
-
-  distanceCm1 = duration1 * SOUND_SPEED/2;
- 
-}
-
-
-void readD2()
-{
-  digitalWrite(trigPin2, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin2, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin2, LOW);
-  
-  duration2 = pulseIn(echoPin2, HIGH);
-
-  distanceCm2 = duration2 * SOUND_SPEED/2;
-
 }
